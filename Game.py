@@ -53,15 +53,44 @@ class PolygonActor(Actor):
         green = random.randint(20, 255)
         blue = random.randint(20, 255)
         self.color = [red, green, blue]
+        self.offset = math.pi / 32
+
+    def intersectLines(self, pt1, pt2, ptA, ptB):
+        DET_TOLERANCE = 0.00000001
+        x1, y1 = pt1
+        x2, y2 = pt2
+        dx1 = x2 - x1
+        dy1 = y2 - y1
+        x, y = ptA
+        xB, yB = ptB
+        dx = xB - x
+        dy = yB - y
+        DET = (-dx1 * dy + dy1 * dx)
+        if math.fabs(DET) < DET_TOLERANCE:
+            return False
+        DETinv = 1.0/DET
+        r = DETinv * (-dy * (x-x1) + dx * (y-y1))
+        s = DETinv * (-dy1 * (x-x1) + dx1 * (y-y1))
+        xi = (x1 + r*dx1 + x + s*dx)/2.0
+        yi = (y1 + r*dy1 + y + s*dy)/2.0
+        return True
 
     def generatePoly(self):
         verts = []
+        self.offset += math.pi / 64
         for i in range(0, self.numSides):
-            angle = 2.0 * math.pi / self.numSides * i
+            angle = (2.0 * math.pi / self.numSides * i) + self.offset
             x = self.size * cos(angle) + self.position[0]
             y = self.size * sin(angle) + self.position[1]
             verts.append([x, y])
         self.verts = verts
+        edges = []
+        for vert1 in self.verts:
+            for vert2 in self.verts:
+                if vert1 != vert2:
+                    tup = (vert1, vert2)
+                    edges.append(tup)
+        self.edges = edges
 
     def draw(self):
         self.generatePoly()
@@ -74,8 +103,10 @@ class PolygonActor(Actor):
         dx = self.position[0]-otherPolygonActor.position[0]
         dy = self.position[1]-otherPolygonActor.position[1]
         dist = sqrt(dx*dx + dy*dy)
-        # if distanc is close enough, check if sides intersect
-        return dist < self.size + otherPolygonActor.size
+        if dist < self.size + otherPolygonActor.size:
+            for edge1 in self.edges:
+                for edge2 in otherPolygonActor.edges:
+                    return self.intersectLines(edge1[0], edge1[1], edge2[0], edge2[1])
 
 
 class PlayerActor(PolygonActor):
@@ -127,7 +158,7 @@ class EnemyActor(PolygonActor):
         spd = [0, 0]
         size = random.randint(1, 40)
         edge = random.randint(0, 3)
-        degree = random.randint(4, 6)
+        degree = random.randint(3, 8)
         if (edge == 0):  # Left Edge
             pos = [-size, random.randint(0, height)]
             spd = [1, 0]
@@ -157,6 +188,8 @@ scoreFont = pygame.font.SysFont("arialroundedmtbold", 25)
 
 gameOverFont = pygame.font.SysFont("arialroundedmtbold", 60)
 
+quitFont = pygame.font.SysFont("arialroundedmtbold", 30)
+
 song = AudioSegment.from_wav("chomp.wav")
 
 size = width, height = 512, 512
@@ -183,15 +216,12 @@ while isDone == False:
 
     keys = pygame.key.get_pressed()
     for key in keys:
-        if keys[pygame.K_SPACE]:
+        if keys[pygame.K_q]:
             sys.exit()
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             sys.exit()
-
-        # if even.type == replay
-            # reset score, players, game_over == fale, etc
 
     if random.randint(1, spawnRate) == 1:
         enemies.append(EnemyActor())
@@ -227,6 +257,11 @@ while isDone == False:
         t_height = game_over_text.get_height()
         screen.blit(game_over_text, (width/2 -
                                      t_width // 2, height/2 - t_height // 2))
+        quit_text = quitFont.render("press Q to quit", True, (255, 0, 0))
+        q_width = quit_text.get_width()
+        q_height = quit_text.get_height()
+        screen.blit(quit_text, (width/2 -
+                                q_width // 2, height/2 - q_height // 2 + t_height))
 
     score_text = scoreFont.render("SCORE: " + str(score), True, (255, 255, 0))
     screen.blit(score_text, (0, 0))
