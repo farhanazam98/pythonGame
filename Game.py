@@ -2,6 +2,8 @@ import sys
 import pygame
 import math
 import random
+import time
+import numpy as np
 from pydub import AudioSegment
 from pydub.playback import play
 from math import *
@@ -72,6 +74,7 @@ class PolygonActor(Actor):
         dx = self.position[0]-otherPolygonActor.position[0]
         dy = self.position[1]-otherPolygonActor.position[1]
         dist = sqrt(dx*dx + dy*dy)
+        # if distanc is close enough, check if sides intersect
         return dist < self.size + otherPolygonActor.size
 
 
@@ -146,9 +149,13 @@ class EnemyActor(PolygonActor):
 
 pygame.init()
 
+bg = pygame.image.load("space.bmp")
+
 score = 0
 
-font = pygame.font.SysFont("arialroundedmtbold", 20)
+scoreFont = pygame.font.SysFont("arialroundedmtbold", 25)
+
+gameOverFont = pygame.font.SysFont("arialroundedmtbold", 60)
 
 song = AudioSegment.from_wav("chomp.wav")
 
@@ -160,18 +167,36 @@ player = PlayerActor([0, 0], [width/2, height/2], 0.9, 4, 8)
 
 enemies = []
 
-
 isDone = False
 gameOver = False
+startTime = time.time()
+# the lower the spawn rate, the more enemies appear
+spawnRate = 50
 while isDone == False:
+    screen.blit(bg, (0, 0))
+    currTime = time.time()
+    if currTime > startTime + 2.0:
+        spawnRate -= 1
+        if spawnRate < 20:
+            spawnRate = 20
+        startTime = time.time()
+
+    keys = pygame.key.get_pressed()
+    for key in keys:
+        if keys[pygame.K_SPACE]:
+            sys.exit()
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             sys.exit()
 
-    if random.randint(1, 50) == 1:
+        # if even.type == replay
+            # reset score, players, game_over == fale, etc
+
+    if random.randint(1, spawnRate) == 1:
         enemies.append(EnemyActor())
 
-    screen.fill([0, 0, 0])
+#    screen.fill([0, 0, 0])
     if gameOver == False:
         player.move()
     player.draw()
@@ -195,14 +220,16 @@ while isDone == False:
             nonCollidingEnemies.append(enemy)
 
     enemies = nonCollidingEnemies
-    if gameOver:
-        text = font.render("Game Over", True, (255, 0, 0))
-        print(type(width/2))
-        screen.blit(text, (width/2, height/2))
-    else:
-        text = font.render("Score: " + str(score), True, (0, 128, 0))
-        screen.blit(text, (0, 0))
 
+    if gameOver:
+        game_over_text = gameOverFont.render("GAME OVER", True, (255, 0, 0))
+        t_width = game_over_text.get_width()
+        t_height = game_over_text.get_height()
+        screen.blit(game_over_text, (width/2 -
+                                     t_width // 2, height/2 - t_height // 2))
+
+    score_text = scoreFont.render("SCORE: " + str(score), True, (255, 255, 0))
+    screen.blit(score_text, (0, 0))
     pygame.display.flip()
 while 1:
 
