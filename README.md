@@ -11,6 +11,6 @@ pygame
 
 pydub 
 
-simpleaudio:
+simpleaudio
 
 It is compatible with Mac High Sierra
